@@ -1,0 +1,7 @@
+authmodulelist="authmysql"
+authmodulelistorig="authuserdb authpam authpgsql authldap authmysql authcustom authpipe"
+daemons=5
+authdaemonvar=/var/run/courier/authdaemon
+DEBUG_LOGIN=0
+DEFAULTOPTIONS=""
+LOGGEROPTS=""

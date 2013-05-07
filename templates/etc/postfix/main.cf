@@ -1,0 +1,54 @@
+myorigin = /etc/mailname
+smtpd_banner = $myhostname ESMTP $mail_name
+biff = no
+append_dot_mydomain = no
+readme_directory = no
+mydestination =
+relayhost =
+mynetworks = 127.0.0.0/8 [::ffff:127.0.0.0]/104 [::1]/128
+mynetworks_style = host
+mailbox_size_limit = 0
+virtual_mailbox_limit = 0
+recipient_delimiter = +
+inet_interfaces = all
+message_size_limit = 0
+ 
+# SMTP Authentication (SASL)
+  
+smtpd_sasl_auth_enable = yes
+broken_sasl_auth_clients = yes
+smtpd_sasl_security_options = noanonymous
+smtpd_sasl_local_domain =
+   
+# Encrypted transfer (SSL/TLS)
+    
+smtp_use_tls = yes
+smtpd_use_tls = yes
+smtpd_tls_cert_file = /etc/ssl/private/{{mail_server}}.crt
+smtpd_tls_key_file = /etc/ssl/private/{{mail_server}}.key
+smtpd_tls_session_cache_database = btree:${data_directory}/smtpd_scache
+smtp_tls_session_cache_database = btree:${data_directory}/smtp_scache
+     
+# Basic SPAM prevention
+      
+smtpd_helo_required = yes
+smtpd_delay_reject = yes
+disable_vrfy_command = yes
+smtpd_sender_restrictions = permit_sasl_authenticated, permit_mynetworks, reject
+smtpd_recipient_restrictions = permit_sasl_authenticated, permit_mynetworks, reject
+       
+# Force incoming mail to go through Amavis
+        
+content_filter = amavis:[127.0.0.1]:10024
+receive_override_options = no_address_mappings
+         
+# Virtual user mappings
+          
+alias_maps = hash:/etc/aliases
+alias_database = hash:/etc/aliases
+virtual_mailbox_base = /var/spool/mail/virtual
+virtual_mailbox_maps = mysql:/etc/postfix/maps/user.cf
+virtual_uid_maps = static:5000
+virtual_gid_maps =  static:5000
+virtual_alias_maps = mysql:/etc/postfix/maps/alias.cf
+virtual_mailbox_domains = mysql:/etc/postfix/maps/domain.cf

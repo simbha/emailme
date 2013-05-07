@@ -1,0 +1,10 @@
+use strict;
+ 
+@local_domains_acl = qw(.);
+$log_level = 1;
+$syslog_priority = 'info';
+$sa_kill_level_deflt = 6.5;
+$final_spam_destiny = D_DISCARD;
+$pax = 'pax';
+
+1;

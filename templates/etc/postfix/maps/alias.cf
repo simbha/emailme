@@ -1,0 +1,8 @@
+user={{user}}
+password={{password}}
+dbname={{db}}
+table=alias
+select_field=destination
+where_field=source
+hosts=127.0.0.1
+additional_conditions=and enabled = 1
