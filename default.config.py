@@ -1,19 +1,19 @@
+default_password = 's3cr3t3'
+
 class Config:
 
-  default_password = 's3cr3t3'
   template_dir = './templates/'
   server = 'example.com'
-  mail_server = 'mail.%s'%Config.server
+  mail_server = 'mail.%s'%server
 
   class default_email_account:
     name = 'Administrator'
     user = 'admin'
-    password=Config.default_password
+    password=default_password
 
   class db:
     name = 'mail'
     user = 'mail'
-    password=Config.default_password
-    
+    password=default_password
 
 config = Config()

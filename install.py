@@ -5,7 +5,12 @@ The steps and configuration were obtained from http://www.pixelinx.com/2010/10/c
 """
 from config import config
 import subprocess
-from django.template import loader, Context
+from django.template import Template, Context
+import shutil
+import os
+from django.conf import settings
+
+settings.configure()
 
 def string_to_file(text_to_write,file_to):
   text_file = open(file_to, "w")
@@ -20,14 +25,22 @@ def create_file_from_template(file_to,context=None):
   context: Dictionary with the keyword to be replaced inside 
     the templete
   """
-  template_file = '%s%s'%(config.template_dir,file_to)
-  template = loader.get_template(template_file)
+  if file_to[0] == '/':
+    template_sub_file = file_to[1:]
+  else:
+    template_sub_file = file_to
+  template_file_name = '%s%s'%(config.template_dir,template_sub_file)
+  template_file=open(template_file_name,'r')
+  template_content = template_file.read()
+  template_file.close()
+  template = Template(template_content)
   context = Context(context)
   content = template.render(context)
   string_to_file(content,file_to)
 
 def backup_file(file_to_backup):
-  subprocess.check_call(['mv', '%s{,.default}'%file_to])
+  #subprocess.check_call(['mv', '%s{,.default}'%file_to])
+  shutil.move(file_to_backup, '%s.default'%file_to_backup)
 
 def backup_and_create_file_from_template(file_to,context):
   backup_file(file_to)
@@ -39,8 +52,7 @@ def execute(parameters_call):
 def shell(script):
   subprocess.check_call(script,shell=True)
   
-
-def install:
+def install():
   execute(['apt-get', 'update'])
 
   execute([
@@ -79,10 +91,9 @@ def install:
     'groupadd', 'virtual', '-g', '5000'])
   execute([
     'useradd', '-r', '-g', 'virtual', '-G', 'users', '-c', "Virtual User", '-u', '5000', 'virtual'])
-  execute([
-    'mkdir', '/var/spool/mail/virtual'])
-  execute([
-    'chown', 'virtual:virtual', '/var/spool/mail/virtual'])
+  os.makedirs('/var/spool/mail/virtual')
+  virtual_user=pwd.getpwnam('virtual')
+  os.chown('/var/spool/mail/virtual',virtual_user.pw_uid,virtual_user.pw_gid)
 
   create_file_from_template('temp/db/create.sql',
     {'db':config.db.name,
@@ -97,7 +108,7 @@ def install:
     'name':config.default_email_account.name})
   shell('mysql -u root -p < temp/db/load_default_data.sql')
 
-  execute(['mkdir', '-p', '/etc/postfix/maps'])
+  os.makedirs('/etc/postfix/maps')
   create_file_from_template('/etc/postfix/maps/alias.cf',
     {'db':config.db.name,
     'user':config.db.user,
@@ -113,9 +124,11 @@ def install:
 
   execute(['chmod', '700', '/etc/postfix/maps/*'])
   execute([ 'chown', 'postfix:postfix', '/etc/postfix/maps/*' ])
+  virtual_user=pwd.getpwnam('virtual')
+  os.chown('/var/spool/mail/virtual',virtual_user.pw_uid,virtual_user.pw_gid)
   
-  execute(['mkdir', '-p', '/var/spool/postfix/var/run/saslauthd'])
-  execute(['mkdir', '/etc/postfix/sasl'])
+  os.makedirs('/var/spool/postfix/var/run/saslauthd')
+  os.makedirs('/etc/postfix/sasl')
   execute(['adduser', 'postfix', 'sasl'])
   create_file_from_template('/etc/postfix/sasl/smtpd.conf',
     {'db':config.db.name,
@@ -177,7 +190,7 @@ def install:
   """
   New steps added after testing.
   """
-  execute(['mkdir', '-p', '/var/mail/virtual/%s/%s/'%(config.server,config.default_email_account.user)])
+  os.makedirs('/var/mail/virtual/%s/%s/'%(config.server,config.default_email_account.user))
 
   create_file_from_template('/etc/amavis/conf.d/05-node_id',
     {'server':config.server})
