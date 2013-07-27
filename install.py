@@ -42,7 +42,7 @@ def backup_file(file_to_backup):
   #subprocess.check_call(['mv', '%s{,.default}'%file_to])
   shutil.move(file_to_backup, '%s.default'%file_to_backup)
 
-def backup_and_create_file_from_template(file_to,context):
+def backup_and_create_file_from_template(file_to,context={}):
   backup_file(file_to)
   create_file_from_template(file_to,context)
 
@@ -85,7 +85,7 @@ def install():
     'courier-ssl'])
 
   backup_and_create_file_from_template('/etc/postfix/main.cf',{'mail_server':config.mail_server})
-  backup_and_create_file_from_template('/etc/postfix/master.cf')
+  backup_and_create_file_from_template('/etc/postfix/master.cf',{'mail_server':config.mail_server})
 
   execute([
     'groupadd', 'virtual', '-g', '5000'])
