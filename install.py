@@ -197,3 +197,4 @@ def install():
 
   execute(['./restart.sh'])
 
+install()
