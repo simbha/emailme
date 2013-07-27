@@ -9,6 +9,8 @@ from django.template import Template, Context
 import shutil
 import os
 from django.conf import settings
+import pwd
+import traceback
 
 settings.configure()
 
@@ -51,6 +53,10 @@ def execute(parameters_call):
 
 def shell(script):
   subprocess.check_call(script,shell=True)
+
+def create_dirs(path):
+  if not os.path.isdir(path):
+    os.makedirs(path)
   
 def install():
   execute(['apt-get', 'update'])
@@ -87,11 +93,20 @@ def install():
   backup_and_create_file_from_template('/etc/postfix/main.cf',{'mail_server':config.mail_server})
   backup_and_create_file_from_template('/etc/postfix/master.cf',{'mail_server':config.mail_server})
 
-  execute([
-    'groupadd', 'virtual', '-g', '5000'])
-  execute([
-    'useradd', '-r', '-g', 'virtual', '-G', 'users', '-c', "Virtual User", '-u', '5000', 'virtual'])
-  os.makedirs('/var/spool/mail/virtual')
+  try:
+    execute([
+      'groupadd', 'virtual', '-g', '5000'])
+  except subprocess.CalledProcessError:
+    print traceback.format_exc()
+
+  try:
+    execute([
+      'useradd', '-r', '-g', 'virtual', '-G', 'users', '-c', "Virtual User", '-u', '5000', 'virtual'])
+  except subprocess.CalledProcessError:
+    print traceback.format_exc()
+
+  create_dirs('/var/spool/mail/virtual')
+
   virtual_user=pwd.getpwnam('virtual')
   os.chown('/var/spool/mail/virtual',virtual_user.pw_uid,virtual_user.pw_gid)
 
@@ -99,16 +114,24 @@ def install():
     {'db':config.db.name,
     'user':config.db.user,
     'password':config.db.password})
-  shell('mysql -u root -p < temp/db/create.sql')
+
+  try:
+    shell('mysql -u root -p < temp/db/create.sql')
+  except subprocess.CalledProcessError:
+    print traceback.format_exc()
 
   create_file_from_template('temp/db/load_default_data.sql',
     {'user':config.default_email_account.user,
     'server':config.server,
     'password':config.default_email_account.password,
     'name':config.default_email_account.name})
-  shell('mysql -u root -p < temp/db/load_default_data.sql')
 
-  os.makedirs('/etc/postfix/maps')
+  try:
+    shell('mysql -u root -p < temp/db/load_default_data.sql')
+  except subprocess.CalledProcessError:
+    print traceback.format_exc()
+
+  create_dirs('/etc/postfix/maps')
   create_file_from_template('/etc/postfix/maps/alias.cf',
     {'db':config.db.name,
     'user':config.db.user,
@@ -122,13 +145,13 @@ def install():
     'user':config.db.user,
     'password':config.db.password})
 
-  execute(['chmod', '700', '/etc/postfix/maps/*'])
-  execute([ 'chown', 'postfix:postfix', '/etc/postfix/maps/*' ])
+  execute(['chmod', '700', '-R', '/etc/postfix/maps/'])
+  execute([ 'chown', 'postfix:postfix', '-R', '/etc/postfix/maps/' ])
   virtual_user=pwd.getpwnam('virtual')
   os.chown('/var/spool/mail/virtual',virtual_user.pw_uid,virtual_user.pw_gid)
   
-  os.makedirs('/var/spool/postfix/var/run/saslauthd')
-  os.makedirs('/etc/postfix/sasl')
+  create_dirs('/var/spool/postfix/var/run/saslauthd')
+  create_dirs('/etc/postfix/sasl')
   execute(['adduser', 'postfix', 'sasl'])
   create_file_from_template('/etc/postfix/sasl/smtpd.conf',
     {'db':config.db.name,
@@ -174,8 +197,8 @@ def install():
 # Generate a new CRT certificate (valid for 10 years)
   execute(['openssl', 'req', '-new', '-outform', 'PEM', '-out', "/etc/ssl/private/%s.crt"%config.mail_server, '-newkey', 'rsa:2048', '-nodes', '-keyout', "/etc/ssl/private/%s.key"%config.mail_server, '-keyform', 'PEM', '-days', '3650', '-x509'])
      
-  execute(['chmod', '640', '/etc/ssl/private/%s.*'%config.mail_server])
-  execute(['chgrp', 'ssl-cert', '/etc/ssl/private/%s.*'%config.mail_server])
+  shell('chmod 640 /etc/ssl/private/%s.*'%config.mail_server)
+  shell('chgrp ssl-cert /etc/ssl/private/%s.*'%config.mail_server)
 
   execute(['adduser', 'clamav', 'amavis'])
   
@@ -190,7 +213,7 @@ def install():
   """
   New steps added after testing.
   """
-  os.makedirs('/var/mail/virtual/%s/%s/'%(config.server,config.default_email_account.user))
+  create_dirs('/var/mail/virtual/%s/%s/'%(config.server,config.default_email_account.user))
 
   create_file_from_template('/etc/amavis/conf.d/05-node_id',
     {'server':config.server})
